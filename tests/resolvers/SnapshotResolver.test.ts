@@ -61,7 +61,6 @@ const GET_SNAPSHOT_QUERY = `
   }
 `;
 
-
 describe('🧪 GraphQL Resolver Tests:', () => {
   let testDir: string;
   let restoreDir: string;
@@ -99,9 +98,7 @@ describe('🧪 GraphQL Resolver Tests:', () => {
     expect(listResponse.errors).toBeUndefined();
     expect(listResponse.data?.listSnapshots.length).toBeGreaterThanOrEqual(1);
 
-    const snapshot = listResponse.data?.listSnapshots.find(
-      (snap: any) => snap.id === createdSnapshotId
-    );
+    const snapshot = listResponse.data?.listSnapshots.find((snap: any) => snap.id === createdSnapshotId);
 
     expect(snapshot).toBeDefined();
     expect(snapshot.files).toEqual(
@@ -144,7 +141,6 @@ describe('🧪 GraphQL Resolver Tests:', () => {
       expect(file.chunks.length).toBeGreaterThan(0);
     });
   });
-
 
   test('Create snapshot from the specific directory', async () => {
     const server = createApolloServer();
