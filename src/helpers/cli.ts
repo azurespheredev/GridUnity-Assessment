@@ -6,7 +6,7 @@ import * as crypto from 'crypto';
 import config from '../config';
 import SnapshotResolver from '../graphql/resolvers/SnapshotResolver';
 import { logger } from '../utils/logger';
-import FileContentEntity from '../entities/FileContentEntity';
+import FileChunkEntity from '../entities/FileChunkEntity';
 
 const program = new Command();
 
@@ -34,20 +34,25 @@ async function main() {
 
     console.info(header);
 
+    const globalChunkHashes = new Set<string>();
+
     // Display the snapshots
     snapshots.forEach((snapshot) => {
-      const fileHashesInSnapshot = new Set<string>();
+      const snapshotChunkHashes = new Set<string>();
 
-      // Calculate the size of the snapshot and distinct files
+      // Calculate the size of snapshot based on chunks
       const { snapshotSize, distinctSize } = snapshot.files.reduce(
         (acc, file) => {
-          acc.snapshotSize += file.file.content.length;
-
-          if (!fileHashesInSnapshot.has(file.file.hash)) {
-            acc.distinctSize += file.file.content.length;
-            fileHashesInSnapshot.add(file.file.hash);
-          }
-
+          file.chunks.forEach(chunk => {
+            acc.snapshotSize += chunk.chunk.length;
+            if (!snapshotChunkHashes.has(chunk.hash)) {
+              snapshotChunkHashes.add(chunk.hash);
+              if (!globalChunkHashes.has(chunk.hash)) {
+                acc.distinctSize += chunk.chunk.length;
+                globalChunkHashes.add(chunk.hash);
+              }
+            }
+          });
           return acc;
         },
         { snapshotSize: 0, distinctSize: 0 }
@@ -89,24 +94,24 @@ async function main() {
     });
 
   program.command('check').action(async () => {
-    const fileRepo = getRepository(FileContentEntity);
-    const allFiles = await fileRepo.find();
+    const chunkRepo = getRepository(FileChunkEntity);
+    const allChunks = await chunkRepo.find();
 
     let corruptedCount = 0;
 
-    // Check if the file content matches the hash
-    allFiles.forEach((file) => {
-      const actualHash = crypto.createHash('sha256').update(file.content).digest('hex');
-      if (actualHash !== file.hash) {
-        logger.error(`Corrupted file detected: Expected hash ${file.hash}, actual hash ${actualHash}`);
+    // Verify chunk integrity (content hash matches the stored hash)
+    allChunks.forEach((chunkEntity) => {
+      const actualHash = crypto.createHash('sha256').update(chunkEntity.chunk).digest('hex');
+      if (actualHash !== chunkEntity.hash) {
+        logger.error(`Corrupted chunk detected: Expected hash ${chunkEntity.hash}, actual hash ${actualHash}`);
         corruptedCount += 1;
       }
     });
 
     if (corruptedCount === 0) {
-      logger.info('No corrupted files found!');
+      logger.info('No corrupted chunks found!');
     } else {
-      logger.warn(`Found ${corruptedCount} corrupted files!`);
+      logger.warn(`Found ${corruptedCount} corrupted chunks!`);
     }
   });
 
