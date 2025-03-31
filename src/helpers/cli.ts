@@ -1,10 +1,12 @@
 /* eslint-disable no-console */
 import { Command } from 'commander';
 import 'reflect-metadata';
-import { createConnection } from 'typeorm';
+import { createConnection, getRepository } from 'typeorm';
+import * as crypto from 'crypto';
 import config from '../config';
 import SnapshotResolver from '../graphql/resolvers/SnapshotResolver';
 import { logger } from '../utils/logger';
+import FileContentEntity from '../entities/FileContentEntity';
 
 const program = new Command();
 
@@ -91,6 +93,29 @@ async function main() {
       await resolver.pruneSnapshot(snapshot);
       logger.info('Snapshot pruned successfully!');
     });
+
+  program.command('check').action(async () => {
+    const fileRepo = getRepository(FileContentEntity);
+    const allFiles = await fileRepo.find();
+
+    let corruptedCount = 0;
+
+    // Check if the file content matches the hash
+    allFiles.forEach((file) => {
+      const actualHash = crypto.createHash('sha256').update(file.content).digest('hex');
+      if (actualHash !== file.hash) {
+        logger.error(`Corrupted file detected: Expected hash ${file.hash}, actual hash ${actualHash}`);
+        corruptedCount += 1;
+      }
+    });
+
+    if (corruptedCount === 0) {
+      logger.info('No corrupted files found!');
+    } else {
+      logger.warn(`Found ${corruptedCount} corrupted files!`);
+    }
+  });
+
 
   program.parse(process.argv);
 }
