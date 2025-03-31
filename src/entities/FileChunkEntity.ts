@@ -3,11 +3,11 @@ import { ObjectType, Field } from 'type-graphql';
 
 @ObjectType()
 @Entity()
-export default class FileContentEntity {
+export default class FileChunkEntity {
   @Field()
   @PrimaryColumn('varchar')
   hash: string;
 
   @Column('blob')
-  content: Buffer;
+  chunk: Buffer;
 }

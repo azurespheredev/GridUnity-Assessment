@@ -1,14 +1,14 @@
 import { Arg, Mutation, Query, Resolver } from 'type-graphql';
 import { Service } from 'typedi';
 import { getRepository } from 'typeorm';
-import type { PathLike } from 'fs';
+import { createHash } from 'crypto';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import SnapshotEntity from '../../entities/SnapshotEntity';
 import SnapshotFileEntity from '../../entities/SnapshotFileEntity';
-import FileContentEntity from '../../entities/FileContentEntity';
-import { hashFile } from '../../utils/hash';
 import { walk } from '../../utils/fs';
+import FileChunkEntity from '../../entities/FileChunkEntity';
+import { chunkBuffer } from '../../utils/chunk';
 
 @Resolver()
 @Service()
@@ -28,7 +28,7 @@ export default class SnapshotResolver {
   @Mutation(() => SnapshotEntity, { description: 'Create a new snapshot' })
   async createSnapshot(@Arg('targetDirectory') targetDirectory: string): Promise<SnapshotEntity> {
     const snapshotRepository = getRepository(SnapshotEntity);
-    const fileContentRepository = getRepository(FileContentEntity);
+    const fileChunkRepository = getRepository(FileChunkEntity);
     const snapshotFileRepository = getRepository(SnapshotFileEntity);
 
     const snapshot = snapshotRepository.create();
@@ -37,21 +37,30 @@ export default class SnapshotResolver {
     const filePaths = await walk(targetDirectory);
 
     await Promise.all(
-      filePaths.map(async (filePath: PathLike | fs.FileHandle) => {
+      filePaths.map(async (filePath) => {
         const content = await fs.readFile(filePath);
-        const hash = await hashFile(filePath.toString());
 
-        let fileContent = await fileContentRepository.findOne(hash);
-        if (!fileContent) {
-          fileContent = fileContentRepository.create({ hash, content });
-          await fileContentRepository.save(fileContent);
-        }
+        // Split file content into chunks
+        const chunks = chunkBuffer(content, 4096); // 4KB chunks
+        const chunkEntities: FileChunkEntity[] = await Promise.all(
+          chunks.map(async (chunk) => {
+            const hash = createHash('sha256').update(chunk).digest('hex');
 
-        const relativePath = path.relative(targetDirectory, filePath.toString());
+            let chunkEntity = await fileChunkRepository.findOne(hash);
+            if (!chunkEntity) {
+              chunkEntity = fileChunkRepository.create({ hash, chunk });
+              await fileChunkRepository.save(chunkEntity);
+            }
+
+            return chunkEntity;
+          })
+        );
+
+        const relativePath = path.relative(targetDirectory, filePath);
         const snapshotFile = snapshotFileRepository.create({
           snapshot,
           path: relativePath,
-          file: fileContent,
+          chunks: chunkEntities,
         });
 
         await snapshotFileRepository.save(snapshotFile);
@@ -67,14 +76,17 @@ export default class SnapshotResolver {
     @Arg('outputDirectory') outputDirectory: string
   ): Promise<boolean> {
     const snapshotRepository = getRepository(SnapshotEntity);
-    const snapshot = await snapshotRepository.findOne(snapshotId, { relations: ['files', 'files.file'] });
+    const snapshot = await snapshotRepository.findOne(snapshotId, { relations: ['files', 'files.chunks'] });
     if (!snapshot) throw new Error('Snapshot not found');
 
     await Promise.all(
       snapshot.files.map(async (snapshotFile) => {
         const outputPath = path.join(outputDirectory, snapshotFile.path);
         await fs.mkdir(path.dirname(outputPath), { recursive: true });
-        await fs.writeFile(outputPath, snapshotFile.file.content);
+
+        // Reassemble file from chunks
+        const fileContent = Buffer.concat(snapshotFile.chunks.map((chunk) => chunk.chunk));
+        await fs.writeFile(outputPath, fileContent);
       })
     );
 
@@ -85,7 +97,7 @@ export default class SnapshotResolver {
   async pruneSnapshot(@Arg('snapshotId') snapshotId: number): Promise<boolean> {
     const snapshotRepository = getRepository(SnapshotEntity);
     const snapshotFileRepository = getRepository(SnapshotFileEntity);
-    const fileContentRepository = getRepository(FileContentEntity);
+    const fileChunkRepository = getRepository(FileChunkEntity);
 
     const snapshot = await snapshotRepository.findOne(snapshotId);
     if (!snapshot) throw new Error('Snapshot not found');
@@ -93,14 +105,18 @@ export default class SnapshotResolver {
     await snapshotFileRepository.delete({ snapshot: { id: snapshotId } });
     await snapshotRepository.delete(snapshotId);
 
-    // Remove unreferenced file contents
-    const usedHashes = (await snapshotFileRepository.find({ relations: ['file'] })).map((sf) => sf.file.hash);
+    // Remove unreferenced chunks
+    const usedChunkHashes = new Set<string>(
+      (await snapshotFileRepository.find({ relations: ['chunks'] })).flatMap((sf) =>
+        sf.chunks.map((chunk) => chunk.hash)
+      )
+    );
 
-    const allFileContents = await fileContentRepository.find();
+    const allChunks = await fileChunkRepository.find();
     await Promise.all(
-      allFileContents
-        .filter((fileContent) => !usedHashes.includes(fileContent.hash))
-        .map((fileContent) => fileContentRepository.delete(fileContent.hash))
+      allChunks
+        .filter((chunk) => !usedChunkHashes.has(chunk.hash))
+        .map((chunk) => fileChunkRepository.delete(chunk.hash))
     );
 
     return true;

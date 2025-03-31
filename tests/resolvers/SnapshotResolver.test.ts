@@ -6,11 +6,13 @@ import { getRepository } from 'typeorm';
 
 import createApolloServer from '../test_helpers/createApolloServer';
 import SnapshotEntity from '../../src/entities/SnapshotEntity';
-import FileContentEntity from '../../src/entities/FileContentEntity';
+import FileChunkEntity from '../../src/entities/FileChunkEntity';
+
+// GraphQL mutations for testing
 
 const CREATE_SNAPSHOT_MUTATION = `
   mutation CreateSnapshot($targetDirectory: String!) {
-      createSnapshot(targetDirectory: $targetDirectory) {
+    createSnapshot(targetDirectory: $targetDirectory) {
       id
       timestamp
     }
@@ -83,15 +85,15 @@ describe('🧪 GraphQL Resolver Tests:', () => {
     expect(originalBin).toEqual(restoredBin);
   });
 
-  test('Snapshotting twice without changes should not duplicate file content', async () => {
+  test('Snapshotting twice without changes should not duplicate chunk content', async () => {
     const server = createApolloServer();
 
     const snapshotRepository = getRepository(SnapshotEntity);
-    const fileContentRepository = getRepository(FileContentEntity);
+    const chunkRepository = getRepository(FileChunkEntity);
 
-    // Count snapshots and file contents before creating a new snapshot
+    // Count snapshots and chunks before creating a new snapshot
     const initialSnapshotCount = await snapshotRepository.count();
-    const initialFileContentCount = await fileContentRepository.count();
+    const initialChunkCount = await chunkRepository.count();
 
     await server.executeOperation({
       query: CREATE_SNAPSHOT_MUTATION,
@@ -102,9 +104,9 @@ describe('🧪 GraphQL Resolver Tests:', () => {
     const finalSnapshotCount = await snapshotRepository.count();
     expect(finalSnapshotCount).toBe(initialSnapshotCount + 1);
 
-    // Verify that no new file contents were duplicated
-    const finalFileContentCount = await fileContentRepository.count();
-    expect(finalFileContentCount).toBe(initialFileContentCount);
+    // Verify that no new chunks were duplicated
+    const finalChunkCount = await chunkRepository.count();
+    expect(finalChunkCount).toBe(initialChunkCount);
   });
 
   test('Pruning snapshot does not affect others', async () => {
