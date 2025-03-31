@@ -9,7 +9,6 @@ import SnapshotEntity from '../../src/entities/SnapshotEntity';
 import FileChunkEntity from '../../src/entities/FileChunkEntity';
 
 // GraphQL mutations for testing
-
 const CREATE_SNAPSHOT_MUTATION = `
   mutation CreateSnapshot($targetDirectory: String!) {
     createSnapshot(targetDirectory: $targetDirectory) {
@@ -31,6 +30,38 @@ const PRUNE_SNAPSHOT_MUTATION = `
   }
 `;
 
+// GraphQL queries for testing
+const LIST_SNAPSHOTS_QUERY = `
+  query {
+    listSnapshots {
+      id
+      timestamp
+      files {
+        path
+        chunks {
+          hash
+        }
+      }
+    }
+  }
+`;
+
+const GET_SNAPSHOT_QUERY = `
+  query GetSnapshot($id: Float!) {
+    getSnapshot(id: $id) {
+      id
+      timestamp
+      files {
+        path
+        chunks {
+          hash
+        }
+      }
+    }
+  }
+`;
+
+
 describe('🧪 GraphQL Resolver Tests:', () => {
   let testDir: string;
   let restoreDir: string;
@@ -49,6 +80,71 @@ describe('🧪 GraphQL Resolver Tests:', () => {
     await fs.rm(testDir, { recursive: true, force: true });
     await fs.rm(restoreDir, { recursive: true, force: true });
   });
+
+  test('List snapshots returns correct snapshot details', async () => {
+    const server = createApolloServer();
+
+    const createResponse = await server.executeOperation({
+      query: CREATE_SNAPSHOT_MUTATION,
+      variables: { targetDirectory: testDir },
+    });
+
+    expect(createResponse.data?.createSnapshot).toHaveProperty('id');
+    const createdSnapshotId = createResponse.data?.createSnapshot.id;
+
+    const listResponse = await server.executeOperation({
+      query: LIST_SNAPSHOTS_QUERY,
+    });
+
+    expect(listResponse.errors).toBeUndefined();
+    expect(listResponse.data?.listSnapshots.length).toBeGreaterThanOrEqual(1);
+
+    const snapshot = listResponse.data?.listSnapshots.find(
+      (snap: any) => snap.id === createdSnapshotId
+    );
+
+    expect(snapshot).toBeDefined();
+    expect(snapshot.files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'test1.txt' }),
+        expect.objectContaining({ path: 'test2.bin' }),
+      ])
+    );
+    snapshot.files.forEach((file: any) => {
+      expect(file.chunks.length).toBeGreaterThan(0);
+    });
+  });
+
+  test('Get snapshot by ID returns correct snapshot', async () => {
+    const server = createApolloServer();
+
+    const createResponse = await server.executeOperation({
+      query: CREATE_SNAPSHOT_MUTATION,
+      variables: { targetDirectory: testDir },
+    });
+
+    expect(createResponse.data?.createSnapshot).toHaveProperty('id');
+    const snapshotId = createResponse.data?.createSnapshot.id;
+
+    const getResponse = await server.executeOperation({
+      query: GET_SNAPSHOT_QUERY,
+      variables: { id: snapshotId },
+    });
+
+    expect(getResponse.errors).toBeUndefined();
+    expect(getResponse.data?.getSnapshot).toBeDefined();
+    expect(getResponse.data?.getSnapshot.id).toBe(snapshotId);
+    expect(getResponse.data?.getSnapshot.files).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'test1.txt' }),
+        expect.objectContaining({ path: 'test2.bin' }),
+      ])
+    );
+    getResponse.data?.getSnapshot.files.forEach((file: any) => {
+      expect(file.chunks.length).toBeGreaterThan(0);
+    });
+  });
+
 
   test('Create snapshot from the specific directory', async () => {
     const server = createApolloServer();
