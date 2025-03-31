@@ -1,4 +1,7 @@
+import dotenv from 'dotenv';
 import ConfigInterface from './ConfigInterface';
+
+dotenv.config();
 
 const env = process.env.NODE_ENV as 'development' | 'production';
 

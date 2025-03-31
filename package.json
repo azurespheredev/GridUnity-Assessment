@@ -6,15 +6,15 @@
     "audit": "yarn npm audit",
     "build": "rm -rf build && tsc --build tsconfig.build.json",
     "dev": "NODE_ENV=development ts-node-dev --watch ['src'] --respawn src/app.ts",
-    "cli": "ts-node ./src/helpers/cli.ts",
-    "snapshot": "ts-node ./src/helpers/cli.ts snapshot",
-    "list": "NODE_ENV=development ts-node-dev ./src/helpers/cli.ts list",
-    "restore": "ts-node ./src/helpers/cli.ts restore",
-    "prune": "ts-node ./src/helpers/cli.ts prune",
     "lint": "eslint --ext .ts src tests",
     "prettier": "prettier '{src,tests}/**/*.ts' --write",
     "test": "jest",
-    "tsc": "tsc"
+    "tsc": "tsc",
+    "cli:help": "ts-node ./src/helpers/cli.ts",
+    "cli:snapshot": "ts-node ./src/helpers/cli.ts snapshot",
+    "cli:list": "ts-node ./src/helpers/cli.ts list",
+    "cli:restore": "ts-node ./src/helpers/cli.ts restore",
+    "cli:prune": "ts-node ./src/helpers/cli.ts prune"
   },
   "dependencies": {
     "apollo-server-core": "3.4.0",
