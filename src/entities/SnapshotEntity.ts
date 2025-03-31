@@ -1,5 +1,5 @@
-import { Field, ObjectType } from 'type-graphql';
-import { CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, CreateDateColumn, OneToMany } from 'typeorm';
+import { ObjectType, Field } from 'type-graphql';
 import SnapshotFileEntity from './SnapshotFileEntity';
 
 @ObjectType()
@@ -13,6 +13,7 @@ export default class SnapshotEntity {
   @CreateDateColumn()
   timestamp: Date;
 
-  @OneToMany(() => SnapshotFileEntity, (sf) => sf.snapshot)
+  @Field(() => [SnapshotFileEntity])
+  @OneToMany(() => SnapshotFileEntity, (file) => file.snapshot, { cascade: true })
   files: SnapshotFileEntity[];
 }
