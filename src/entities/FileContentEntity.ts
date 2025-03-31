@@ -8,6 +8,6 @@ export default class FileContentEntity {
   @PrimaryColumn('varchar')
   hash: string;
 
-  @Column('bytea')
+  @Column('blob')
   content: Buffer;
 }
