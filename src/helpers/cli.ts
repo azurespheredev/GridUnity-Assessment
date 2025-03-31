@@ -22,10 +22,57 @@ async function main() {
 
   program.command('list').action(async () => {
     const snapshots = await resolver.listSnapshots();
-    console.log('SNAPSHOT\tTIMESTAMP');
+
+    let totalDistinctSize = 0;
+
+    // Header of the table output
+    const header = [
+      'SNAPSHOT'.padEnd(10),
+      'TIMESTAMP'.padEnd(25),
+      'SIZE'.padEnd(12),
+      'DISTINCT_SIZE'.padEnd(15),
+    ].join('');
+
+    console.info(header);
+
+    // Display the snapshots
     snapshots.forEach((snapshot) => {
-      console.log(`${snapshot.id}\t${snapshot.timestamp}`);
+      const fileHashesInSnapshot = new Set<string>();
+
+      // Calculate the size of the snapshot and distinct files
+      const { snapshotSize, distinctSize } = snapshot.files.reduce(
+        (acc, file) => {
+          acc.snapshotSize += file.file.content.length;
+
+          if (!fileHashesInSnapshot.has(file.file.hash)) {
+            acc.distinctSize += file.file.content.length;
+            fileHashesInSnapshot.add(file.file.hash);
+          }
+
+          return acc;
+        },
+        { snapshotSize: 0, distinctSize: 0 }
+      );
+
+      totalDistinctSize += distinctSize;
+
+      const row = [
+        `${snapshot.id}`.padEnd(10),
+        `${snapshot.timestamp.toISOString()}`.padEnd(25),
+        `${snapshotSize}`.padEnd(12),
+        `${distinctSize}`.padEnd(15),
+      ].join('');
+
+      console.info(row);
     });
+
+    // Display the total size of all snapshots
+    const totalRow = [
+      'total'.padEnd(35),
+      `${totalDistinctSize}`.padEnd(15),
+    ].join('');
+
+    console.info(totalRow);
   });
 
   program
