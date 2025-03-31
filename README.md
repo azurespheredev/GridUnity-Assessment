@@ -67,7 +67,13 @@
 
 4. **Register Environment Variable (Windows OS)**
 
-   Add `<your absolute folder path>/scripts/windows` to PATH in environment variable settings.
+   Make sure you have these dependencies installed globally
+
+   ```sh
+   npm i -g ts-node typescript
+   ```
+
+   And add `<your absolute folder path>/scripts/windows` to PATH in environment variable settings.
 
 ## ▶️ Usage
 
