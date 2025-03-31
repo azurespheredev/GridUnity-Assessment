@@ -1,0 +1,3 @@
+mutation RestoreSnapshot($snapshotId: Int!, $outputDirectory: String!) {
+  restore(snapshotId: $snapshotId, outputDirectory: $outputDirectory)
+}

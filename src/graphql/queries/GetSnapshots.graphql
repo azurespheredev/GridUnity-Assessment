@@ -1,0 +1,12 @@
+query GetSnapshots {
+  snapshots {
+    id
+    timestamp
+    files {
+      path
+      file {
+        hash
+      }
+    }
+  }
+}

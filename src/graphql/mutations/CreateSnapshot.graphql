@@ -1,0 +1,12 @@
+mutation CreateSnapshot($targetDirectory: String!) {
+  snapshot(targetDirectory: $targetDirectory) {
+    id
+    timestamp
+    files {
+      path
+      file {
+        hash
+      }
+    }
+  }
+}

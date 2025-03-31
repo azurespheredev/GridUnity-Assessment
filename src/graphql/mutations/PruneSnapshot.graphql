@@ -1,0 +1,3 @@
+mutation PruneSnapshot($snapshotId: Int!) {
+  prune(snapshotId: $snapshotId)
+}
