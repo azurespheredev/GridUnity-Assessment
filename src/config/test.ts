@@ -12,7 +12,7 @@ const config: ConfigInterface = {
     synchronize: true,
   },
   graphQLPath: '/graphql',
-  resolvers: [`${__dirname}/../resolvers/**/*Resolver.ts`],
+  resolvers: [`${__dirname}/../graphql/resolvers/**/*Resolver.ts`],
 };
 
 export default config;

@@ -28,12 +28,9 @@ async function main() {
     let totalDistinctSize = 0;
 
     // Header of the table output
-    const header = [
-      'SNAPSHOT'.padEnd(10),
-      'TIMESTAMP'.padEnd(25),
-      'SIZE'.padEnd(12),
-      'DISTINCT_SIZE'.padEnd(15),
-    ].join('');
+    const header = ['SNAPSHOT'.padEnd(10), 'TIMESTAMP'.padEnd(25), 'SIZE'.padEnd(12), 'DISTINCT_SIZE'.padEnd(15)].join(
+      ''
+    );
 
     console.info(header);
 
@@ -69,10 +66,7 @@ async function main() {
     });
 
     // Display the total size of all snapshots
-    const totalRow = [
-      'total'.padEnd(35),
-      `${totalDistinctSize}`.padEnd(15),
-    ].join('');
+    const totalRow = ['total'.padEnd(35), `${totalDistinctSize}`.padEnd(15)].join('');
 
     console.info(totalRow);
   });
@@ -115,7 +109,6 @@ async function main() {
       logger.warn(`Found ${corruptedCount} corrupted files!`);
     }
   });
-
 
   program.parse(process.argv);
 }
