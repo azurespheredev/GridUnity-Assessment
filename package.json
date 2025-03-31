@@ -9,12 +9,7 @@
     "lint": "eslint --ext .ts src tests",
     "prettier": "prettier '{src,tests}/**/*.ts' --write",
     "test": "jest",
-    "tsc": "tsc",
-    "cli:help": "ts-node ./src/helpers/cli.ts",
-    "cli:snapshot": "ts-node ./src/helpers/cli.ts snapshot",
-    "cli:list": "ts-node ./src/helpers/cli.ts list",
-    "cli:restore": "ts-node ./src/helpers/cli.ts restore",
-    "cli:prune": "ts-node ./src/helpers/cli.ts prune"
+    "tsc": "tsc"
   },
   "dependencies": {
     "apollo-server-core": "3.4.0",
