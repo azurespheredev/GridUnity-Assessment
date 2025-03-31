@@ -94,14 +94,13 @@ export default class SnapshotResolver {
     await snapshotRepository.delete(snapshotId);
 
     // Remove unreferenced file contents
-    const usedHashes = (await snapshotFileRepository.find({ relations: ['file'] }))
-      .map(sf => sf.file.hash);
+    const usedHashes = (await snapshotFileRepository.find({ relations: ['file'] })).map((sf) => sf.file.hash);
 
     const allFileContents = await fileContentRepository.find();
     await Promise.all(
       allFileContents
-        .filter(fileContent => !usedHashes.includes(fileContent.hash))
-        .map(fileContent => fileContentRepository.delete(fileContent.hash))
+        .filter((fileContent) => !usedHashes.includes(fileContent.hash))
+        .map((fileContent) => fileContentRepository.delete(fileContent.hash))
     );
 
     return true;

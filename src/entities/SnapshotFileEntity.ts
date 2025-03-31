@@ -15,7 +15,7 @@ export default class SnapshotFileEntity {
   path: string;
 
   @Field(() => SnapshotEntity)
-  @ManyToOne(() => SnapshotEntity, snapshot => snapshot.files, {
+  @ManyToOne(() => SnapshotEntity, (snapshot) => snapshot.files, {
     primary: true,
     onDelete: 'CASCADE',
   })
