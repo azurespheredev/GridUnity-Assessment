@@ -1,5 +1,5 @@
 import { Field, ObjectType } from 'type-graphql';
-import { Entity, ManyToOne, PrimaryColumn, JoinColumn, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, PrimaryColumn, ManyToOne, JoinColumn, ManyToMany, JoinTable } from 'typeorm';
 import SnapshotEntity from './SnapshotEntity';
 import FileChunkEntity from './FileChunkEntity';
 
@@ -16,7 +16,6 @@ export default class SnapshotFileEntity {
 
   @Field(() => SnapshotEntity)
   @ManyToOne(() => SnapshotEntity, (snapshot) => snapshot.files, {
-    primary: true,
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'snapshotId' })
@@ -24,6 +23,13 @@ export default class SnapshotFileEntity {
 
   @Field(() => [FileChunkEntity])
   @ManyToMany(() => FileChunkEntity, { eager: true })
-  @JoinTable()
+  @JoinTable({
+    name: 'snapshot_file_chunks',
+    joinColumns: [
+      { name: 'snapshotId', referencedColumnName: 'snapshotId' },
+      { name: 'path', referencedColumnName: 'path' },
+    ],
+    inverseJoinColumns: [{ name: 'chunkHash', referencedColumnName: 'hash' }],
+  })
   chunks: FileChunkEntity[];
 }

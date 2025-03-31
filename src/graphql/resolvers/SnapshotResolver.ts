@@ -16,13 +16,16 @@ export default class SnapshotResolver {
   @Query(() => [SnapshotEntity], { description: 'List all snapshots' })
   async listSnapshots(): Promise<SnapshotEntity[]> {
     const snapshotRepository = getRepository(SnapshotEntity);
-    return snapshotRepository.find({ relations: ['files', 'files.file'] });
+    return snapshotRepository.find({
+      relations: ['files', 'files.chunks'],
+      order: { id: 'ASC' },
+    });
   }
 
   @Query(() => SnapshotEntity, { nullable: true, description: 'Get a snapshot by ID' })
   async getSnapshot(@Arg('id') id: number): Promise<SnapshotEntity | undefined> {
     const snapshotRepository = getRepository(SnapshotEntity);
-    return snapshotRepository.findOne(id, { relations: ['files', 'files.file'] });
+    return snapshotRepository.findOne(id, { relations: ['files', 'files.chunks'] });
   }
 
   @Mutation(() => SnapshotEntity, { description: 'Create a new snapshot' })
@@ -58,8 +61,9 @@ export default class SnapshotResolver {
 
         const relativePath = path.relative(targetDirectory, filePath);
         const snapshotFile = snapshotFileRepository.create({
-          snapshot,
+          snapshotId: snapshot.id,
           path: relativePath,
+          snapshot,
           chunks: chunkEntities,
         });
 

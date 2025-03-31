@@ -7,6 +7,7 @@ import config from '../config';
 import SnapshotResolver from '../graphql/resolvers/SnapshotResolver';
 import { logger } from '../utils/logger';
 import FileChunkEntity from '../entities/FileChunkEntity';
+import SnapshotEntity from '../entities/SnapshotEntity';
 
 const program = new Command();
 
@@ -23,56 +24,57 @@ async function main() {
     });
 
   program.command('list').action(async () => {
-    const snapshots = await resolver.listSnapshots();
+    const snapshots = await getRepository(SnapshotEntity).find({
+      relations: ['files', 'files.chunks'],
+      order: { id: 'ASC' },
+    });
 
-    let totalDistinctSize = 0;
-
-    // Header of the table output
-    const header = ['SNAPSHOT'.padEnd(10), 'TIMESTAMP'.padEnd(25), 'SIZE'.padEnd(12), 'DISTINCT_SIZE'.padEnd(15)].join(
-      ''
-    );
+    const header = [
+      'SNAPSHOT'.padEnd(10),
+      'TIMESTAMP'.padEnd(25),
+      'FILE'.padEnd(20),
+      'SIZE'.padEnd(12),
+      'DISTINCT_SIZE'.padEnd(15),
+    ].join('');
 
     console.info(header);
 
     const globalChunkHashes = new Set<string>();
+    let totalDistinctSize = 0;
 
-    // Display the snapshots
     snapshots.forEach((snapshot) => {
-      const snapshotChunkHashes = new Set<string>();
+      snapshot.files.forEach((file) => {
+        const fileChunkHashes = new Set<string>();
+        let fileSize = 0;
+        let fileDistinctSize = 0;
 
-      // Calculate the size of snapshot based on chunks
-      const { snapshotSize, distinctSize } = snapshot.files.reduce(
-        (acc, file) => {
-          file.chunks.forEach(chunk => {
-            acc.snapshotSize += chunk.chunk.length;
-            if (!snapshotChunkHashes.has(chunk.hash)) {
-              snapshotChunkHashes.add(chunk.hash);
-              if (!globalChunkHashes.has(chunk.hash)) {
-                acc.distinctSize += chunk.chunk.length;
-                globalChunkHashes.add(chunk.hash);
-              }
-            }
-          });
-          return acc;
-        },
-        { snapshotSize: 0, distinctSize: 0 }
-      );
+        // Calculate file size and distinct size
+        file.chunks.forEach((chunk) => {
+          fileSize += chunk.chunk.length;
 
-      totalDistinctSize += distinctSize;
+          if (!globalChunkHashes.has(chunk.hash)) {
+            fileDistinctSize += chunk.chunk.length;
+            globalChunkHashes.add(chunk.hash);
+          }
 
-      const row = [
-        `${snapshot.id}`.padEnd(10),
-        `${snapshot.timestamp.toISOString()}`.padEnd(25),
-        `${snapshotSize}`.padEnd(12),
-        `${distinctSize}`.padEnd(15),
-      ].join('');
+          fileChunkHashes.add(chunk.hash);
+        });
 
-      console.info(row);
+        totalDistinctSize += fileDistinctSize;
+
+        const row = [
+          `${snapshot.id}`.padEnd(10),
+          `${snapshot.timestamp.toISOString().replace('T', ' ').replace('Z', '')}`.padEnd(25),
+          `${file.path}`.padEnd(20),
+          `${fileSize}`.padEnd(12),
+          `${fileDistinctSize}`.padEnd(15),
+        ].join('');
+
+        console.info(row);
+      });
     });
 
-    // Display the total size of all snapshots
-    const totalRow = ['total'.padEnd(35), `${totalDistinctSize}`.padEnd(15)].join('');
-
+    const totalRow = ['total'.padEnd(55), `${totalDistinctSize}`.padEnd(15)].join('');
     console.info(totalRow);
   });
 
